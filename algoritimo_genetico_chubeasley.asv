@@ -2,7 +2,7 @@ clc;
 clear all; 
 close all;
 
-%% PARÂMETROS DO ALGORITMO
+%% 1. PARÂMETROS DO ALGORITMO
 fprintf('Configurando os parâmetros do Algoritmo Genético...\n');
 tam_populacao     = 100;  % Tamanho da população 
 num_iteracoes     = 200; % Critério de parada: número de indivíduos a serem criados 
@@ -12,17 +12,17 @@ tam_torneio       = 3;    % Parâmetro para a seleção por torneio
 Sb = 100;
 alpha = 10e3;
 
-%% DADOS DO SISTEMA ELÉTRICO
+%% 2. DADOS DO SISTEMA ELÉTRICO
 % Sistema_006_110
 % Sistema_006_200
 % Sistema_024
- Sistema_046
-% Sistema_Colombiano_Estatico
+% Sistema_046
+ Sistema_Colombiano_Estatico
 
 num_variaveis = size(dados_ramos, 1);
 limites_max   = dados_ramos(:, 8).';
 
-%% GERAÇÃO E AVALIAÇÃO DA POPULAÇÃO INICIAL
+%% 3. GERAÇÃO E AVALIAÇÃO DA POPULAÇÃO INICIAL
 fprintf('Criando e avaliando a população inicial\n');
 populacao = zeros(tam_populacao, num_variaveis);
 custo_invest_pop = zeros(tam_populacao, 1);
@@ -46,14 +46,14 @@ parfor i = 1:tam_populacao
     custo_corte_pop(i) = cc;
 end
 
-%% LOOP EVOLUTIVO PRINCIPAL (Modelo Chu-Beasley)
+%% 4. LOOP EVOLUTIVO PRINCIPAL (Modelo Chu-Beasley)
 [melhor_custo_global, idx_melhor_inicial] = min(fitness_total_pop);
 melhor_solucao_global = populacao(idx_melhor_inicial, :); % O melhor indivíduo é o incumbente
 historico_custo = zeros(num_iteracoes, 1);
 
 for iter = 1:num_iteracoes
 fprintf('Analisando Iteração %d de %d...\n', iter, num_iteracoes);
-    % Criação de um novo Descendente 
+    % --- 4.1 Criação de um novo Descendente ---
     
     % Seleção por Torneio entre individuos para encontrar dois melhores pais (menor custo) 
     idx_pai1 = selecao_torneio(fitness_total_pop, tam_torneio); 
@@ -61,10 +61,10 @@ fprintf('Analisando Iteração %d de %d...\n', iter, num_iteracoes);
     pai1 = populacao(idx_pai1, :);
     pai2 = populacao(idx_pai2, :);
     
-    % Crossover para gerar dois filhos 
+    % b) Crossover para gerar dois filhos 
     [filho1, filho2] = crossover_um_ponto(pai1, pai2, num_variaveis);
     
-    % Avalia os dois filhos e seleciona o melhor para ser o "Descendente" 
+    % c) Avalia os dois filhos e seleciona o melhor para ser o "Descendente" 
     [fo1, ~, ~] = funcao_fitness_DC(filho1, dados_barras, dados_ramos, Sb, alpha);
     [fo2, ~, ~] = funcao_fitness_DC(filho2, dados_barras, dados_ramos, Sb, alpha);
     
@@ -74,17 +74,17 @@ fprintf('Analisando Iteração %d de %d...\n', iter, num_iteracoes);
         descendente = filho2;
     end
     
-    % Aplica mutação no descendente selecionado 
+    % d) Aplica mutação no descendente selecionado 
     descendente = mutacao(descendente, taxa_mutacao, limites_max);
 
-    % Melhoramento Local (Refinamento / Poda)
+    % --- 4.2 Melhoramento Local (Refinamento / Poda) ---
     % Conforme o modelo, o novo indivíduo passa por uma etapa de melhoramento 
     descendente = funcao_poda(descendente, dados_barras, dados_ramos, Sb, alpha);
     
-    %Avalia o indivíduo final após todas as etapas
+    % e) Avalia o indivíduo final após todas as etapas
     [fo_novo, ci_novo, cc_novo] = funcao_fitness_DC(descendente, dados_barras, dados_ramos, Sb, alpha);
     
-    %Critério de Aceitação de Chu-Beasley
+    % --- 4.3 Critério de Aceitação de Chu-Beasley ---
     % O novo indivíduo deve ser diferente de todos na população atual, se
     % for igual é descartado e a iteraçao é perdida
     if ismember(descendente, populacao, 'rows')%Função retorna true se o descendente for um duplicado e false caso contrário. 
@@ -108,15 +108,15 @@ fprintf('Analisando Iteração %d de %d...\n', iter, num_iteracoes);
        (abs(cc_novo - custo_corte_pop(idx_pior)) < 1e-3 && fo_novo < fitness_total_pop(idx_pior)) 
         %%A sua "unfitness" (cc_novo) for menor que a do pior indivíduo, 
         % OU A "unfitness" for a mesma (idealmente, ambas zero) e o seu "fitness" (fo_novo) for melhor que o do pior indivíduo
-
+        
         populacao(idx_pior, :) = descendente;
         custo_invest_pop(idx_pior) = ci_novo;
         custo_corte_pop(idx_pior) = cc_novo;
         fitness_total_pop(idx_pior) = fo_novo;
     end
     
-    %Atualiza a melhor solução global encontrada 
-    [melhor_custo_iter, idx_melhor_iter] = min(fitness_total_pop); % Após cada possível modificação na população, o código verifica qual é o melhor indivíduo atual.
+    % --- 4.4 Atualiza a melhor solução global encontrada (Incumbente) ---
+    [melhor_custo_iter, idx_melhor_iter] = min(fitness_total_pop);
     historico_custo(iter) = melhor_custo_iter;
     if melhor_custo_iter < melhor_custo_global
         melhor_custo_global = melhor_custo_iter;
