@@ -93,7 +93,6 @@ dados_barras = [1	0	240	0.00
     92	0	0	0.00
     93	0	0	0.00];
 
-%               Ni  Nj Nij Rij   Xij  FijMax Costo NijMax
 dados_ramos = [52	88	0	0	0.0980	300	34.190	5
     43	88	0	0	0.1816	250	39.560	5
     57	81	0	0	0.0219	550	58.890	5

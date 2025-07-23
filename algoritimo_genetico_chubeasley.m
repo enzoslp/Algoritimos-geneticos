@@ -4,11 +4,11 @@ close all;
 
 %% PARÂMETROS DO ALGORITMO
 fprintf('Configurando os parâmetros do Algoritmo Genético...\n');
-tam_populacao     = 100;  % Tamanho da população 
-num_iteracoes     = 200; % Critério de parada: número de indivíduos a serem criados 
-taxa_crossover    = 0.8;
-taxa_mutacao      = 0.05;
-tam_torneio       = 3;    % Parâmetro para a seleção por torneio
+tam_populacao     = 500;  % Tamanho da população 
+num_iteracoes     = 2500; % Critério de parada: número de indivíduos a serem criados 
+taxa_crossover    = 1;
+taxa_mutacao      = 0.09;
+tam_torneio       = 6;    % Parâmetro para a seleção por torneio
 Sb = 100;
 alpha = 10e3;
 
@@ -16,8 +16,8 @@ alpha = 10e3;
 % Sistema_006_110
 % Sistema_006_200
 % Sistema_024
- Sistema_046
-% Sistema_Colombiano_Estatico
+% Sistema_046
+ Sistema_Colombiano_Estatico
 
 num_variaveis = size(dados_ramos, 1);
 limites_max   = dados_ramos(:, 8).';
@@ -30,7 +30,7 @@ custo_corte_pop  = zeros(tam_populacao, 1);
 fitness_total_pop = zeros(tam_populacao, 1);
 
 % Geração aleatória da população inicial
-parfor i = 1:tam_populacao
+for i = 1:tam_populacao
     individuo_temp = zeros(1, num_variaveis);
     for j = 1:num_variaveis
         individuo_temp(j) = randi([0, limites_max(j)]);
@@ -38,7 +38,7 @@ parfor i = 1:tam_populacao
     populacao(i, :) = individuo_temp;
     
     % Avaliação da população inicial 
-    [fo, ci, cc] = funcao_fitness_DC(populacao(i,:), dados_barras, dados_ramos, Sb, alpha); %calcula o custo do investimento e custo por corte de carga
+    [fo, ci, cc,~, ~] = funcao_fitness_DC(populacao(i,:), dados_barras, dados_ramos, Sb, alpha); %calcula o custo do investimento e custo por corte de carga
     
     % Atribuição aos vetores de slicing
     fitness_total_pop(i) = fo;
@@ -77,6 +77,16 @@ fprintf('Analisando Iteração %d de %d...\n', iter, num_iteracoes);
     % Aplica mutação no descendente selecionado 
     descendente = mutacao(descendente, taxa_mutacao, limites_max);
 
+
+    %%Rodar o DC aqui para ver se tem corte de carga, se tiver, elimina o
+    %%corte de carga
+    [~, ~, cc_novo, ~, ~] = funcao_fitness_DC(descendente, dados_barras, dados_ramos, Sb, alpha);
+    
+    if cc_novo>1e-2
+        fprintf('  Corte de carga detectado (%.4f), iniciando algoritimo MCC\n', cc_novo);
+        [descendente, cc_reparado] = funcao_reparo_inviabilidade(descendente, dados_barras, dados_ramos, Sb, alpha, limites_max, cc_novo);
+    end
+   
     % Melhoramento Local (Refinamento / Poda)
     % Conforme o modelo, o novo indivíduo passa por uma etapa de melhoramento 
     descendente = funcao_poda(descendente, dados_barras, dados_ramos, Sb, alpha);
